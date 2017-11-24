@@ -1,5 +1,8 @@
 import torch.nn as nn
 import torch.nn.functional as F
+from tqdm import tqdm as tqdm
+from torch.autograd import Variable
+import numpy as np
 
 class MyNet(nn.Module):
     def __init__(self):
@@ -26,3 +29,77 @@ class MyNet(nn.Module):
         out = F.relu(self.deconv4(out))
         
         return out
+
+train_loss=[]
+test_loss=[]
+
+def train_rnn_model(model, criterion, optimizer, trainLoader, valLoader, n_epochs = 10, use_gpu = False):      
+    
+    if use_gpu:
+        print('using GPU!')
+        model = model.cuda()
+        criterion = criterion.cuda()
+        
+    # Training loop.
+    for epoch in range(0, n_epochs):
+        cum_loss = 0.0
+        accuracy = 0
+        
+        # Make a pass over the training data.
+        t = tqdm(trainData, desc = 'Training epoch %d' % epoch)
+        model.train()  # This is important to call before training!
+        for (ip_image, out_image) in enumerate(t): 
+
+            input_image = torch.autograd.Variable(ip_image)
+            target = torch.autograd.Variable(out_image)
+
+            if use_gpu:
+                input_image = input_image.cuda()
+                target = target.cuda()
+                
+            y_ = model(input_image)
+
+            loss = criterion(y_, target)
+            cum_loss += loss.data[0]
+
+            optimizer.zero_grad()
+
+            loss.backward()
+                    # Weight and bias updates.
+            optimizer.step()                
+
+            # logging information.
+            t.set_postfix(loss = cum_loss / (1 + i)) 
+
+        train_loss.append(cum_loss/(i+1))
+
+
+        # Make a pass over the validation data.
+        cum_loss = 0.0
+        accuracy = 0
+        
+        t = tqdm(valData, desc = 'Validation epoch %d' % epoch)
+        model.eval()  # This is important to call before evaluating!
+        for (ip_image,out_image) in enumerate(t): 
+        
+            input_image = torch.autograd.Variable(ip_image)
+            target = torch.autograd.Variable(out_image)
+
+            if use_gpu:
+                input_image = input_image.cuda()
+                target = target.cuda()
+                
+            y_ = model(input_image)
+
+            loss = criterion(y_, target)
+            cum_loss += loss.data[0]
+            
+        test_loss.append(cum_loss/(i+1))
+    return model
+
+model = MyNet()
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr = 0.005)
+
+# Train the previously defined model.
+trained_model = train_rnn_model(model, criterion, optimizer, trainLoader, valLoader, n_epochs = 10, use_gpu = True)
