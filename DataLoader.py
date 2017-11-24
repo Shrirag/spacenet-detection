@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image
 import torchvision.transforms as transforms
 import torch.utils.data as data
+import random
 
 cvt2pil = transforms.ToPILImage()
 
@@ -44,4 +45,19 @@ imgTransform = transforms.Compose([transforms.Scale((400, 400)),
                                    transforms.ToTensor()])
 
 trainData = Spacenet_Dataset("/home/dipshil/Spacenet_things/annotations/trainval.txt",transform=imgTransform)
+valData = Spacenet_Dataset("/home/dipshil/Spacenet_things/annotations/test.txt",transform=imgTransform)
 inp,out = trainData[200]
+
+def get_sample():
+    inp,out = trainData[random.randint(0,3673)] # change it to Valdata if necessary, dont forget to change value inside rand()
+    inp = inp.view(-1,3,400,400)
+    model = MyNet().cuda()
+    sample_ip = torch.autograd.Variable(inp).cuda()
+    sample_out = model(sample_ip)
+    sample_out = sample_out.view(-1,400,400)
+    sample_out = cvt2pil(sample_out.data.cpu())
+    sample_inp = cvt2pil(inp.view(-1,400,400)) 
+    plt.imshow(sample_inp)
+    plt.show()
+    plt.imshow(sample_out)
+    plt.show()
